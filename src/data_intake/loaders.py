@@ -4,6 +4,7 @@ Everything is loaded as text on purpose: the audit's job is to find out what typ
 really has, so no reader is allowed to guess and silently coerce first.
 """
 
+from collections.abc import Iterable
 from datetime import date, datetime, time
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from openpyxl import load_workbook
 from data_intake.models import RawTable
 
 SUPPORTED = {".csv", ".txt", ".xlsx", ".xlsm"}
+HEADER_SCAN_ROWS = 20
 
 
 class UnsupportedFileError(ValueError):
@@ -86,12 +88,30 @@ def _cell_text(value: object) -> str | None:
 
 def _build_table(name: str, source: Path, rows: list[list[str | None]]) -> RawTable:
     rows = [row for row in rows if any(cell not in (None, "") for cell in row)]
-    header_index = 0
+    header_index = find_header_row(rows)
     width = max((len(row) for row in rows), default=0)
     header = rows[header_index] if rows else []
     columns, renamed = clean_headers(list(header) + [None] * (width - len(header)))
     body = [list(row) + [None] * (width - len(row)) for row in rows[header_index + 1 :]]
     return RawTable(name, source, columns, body, header_index, renamed)
+
+
+def find_header_row(rows: list[list[str | None]]) -> int:
+    """First row that is filled across most of the table's width.
+
+    Exports often start with a title and a "generated on" line; those rows fill one or two
+    cells, while the header fills most columns.
+    """
+    sample = rows[:HEADER_SCAN_ROWS]
+    width = max((_filled(row) for row in sample), default=0)
+    for index, row in enumerate(sample):
+        if _filled(row) >= max(2, width / 2):
+            return index
+    return 0
+
+
+def _filled(row: Iterable[str | None]) -> int:
+    return sum(1 for cell in row if cell not in (None, ""))
 
 
 def clean_headers(header: list[str | None]) -> tuple[list[str], dict[str, str]]:
