@@ -29,7 +29,8 @@ def run_audit(folder: Path, client: str, as_of: date | None = None) -> Audit:
         client: Name shown on the report.
         as_of: Date the data was exported; dates after it are flagged. Defaults to today.
     """
-    contexts = [TableContext.build(t, as_of or date.today()) for t in load_folder(folder)]
+    as_of = as_of or date.today()
+    contexts = [TableContext.build(t, as_of) for t in load_folder(folder)]
     findings: list[Finding] = [
         finding for ctx in contexts for check in CHECKS for finding in check(ctx)
     ]
@@ -38,6 +39,7 @@ def run_audit(folder: Path, client: str, as_of: date | None = None) -> Audit:
     findings.sort(key=lambda f: (SEVERITY_ORDER[f.severity], f.table, f.column or "", f.code))
     return Audit(
         client=client,
+        as_of=as_of,
         tables=[profile_table(ctx) for ctx in contexts],
         findings=findings,
         joins=joins,

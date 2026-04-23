@@ -1,6 +1,7 @@
 """Data structures shared by the loaders, checks, audit and report."""
 
 from dataclasses import dataclass, field
+from datetime import date
 from enum import StrEnum
 from pathlib import Path
 
@@ -85,6 +86,7 @@ class KpiSuggestion(BaseModel):
 
 class Audit(BaseModel):
     client: str
+    as_of: date
     tables: list[TableProfile]
     findings: list[Finding]
     joins: list[JoinCandidate]
