@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data audit - {{ audit.client }}</title>
+<style>
+  :root {
+    --bg: #fbfaf8; --panel: #ffffff; --text: #1d1d1f; --muted: #6b6b70; --line: #e6e3de;
+    --critical: #b42318; --critical-bg: #fdecea; --warning: #9a6700; --warning-bg: #fff4d6;
+    --info: #1f5f9a; --info-bg: #e8f1fb; --accent: #2e5e4e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141415; --panel: #1c1c1e; --text: #ececed; --muted: #a0a0a6; --line: #2e2e31;
+      --critical: #ff8a80; --critical-bg: #3a1a18; --warning: #f5c451; --warning-bg: #332a12;
+      --info: #8cc2f5; --info-bg: #15283a; --accent: #8fd1b5;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 40px 20px 80px; }
+  h1 { font-size: 28px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 19px; margin: 48px 0 12px; }
+  .sub { color: var(--muted); margin: 0 0 28px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .tile b { display: block; font-size: 26px; line-height: 1.2; }
+  .tile span { color: var(--muted); font-size: 13px; }
+  .tile.critical b { color: var(--critical); } .tile.warning b { color: var(--warning); }
+  .tile.info b { color: var(--info); }
+  .finding { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--line);
+    border-radius: 8px; padding: 14px 16px; margin: 10px 0; }
+  .finding.critical { border-left-color: var(--critical); }
+  .finding.warning { border-left-color: var(--warning); }
+  .finding.info { border-left-color: var(--info); }
+  .finding h3 { font-size: 15px; margin: 0 0 4px; }
+  .where { color: var(--muted); font-size: 13px; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.04em; padding: 1px 7px; border-radius: 999px; margin-right: 6px; }
+  .badge.critical { color: var(--critical); background: var(--critical-bg); }
+  .badge.warning { color: var(--warning); background: var(--warning-bg); }
+  .badge.info { color: var(--info); background: var(--info-bg); }
+  .impact { margin: 6px 0 0; }
+  .examples { margin: 8px 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  code, .examples span { font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .examples span { background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; }
+  details { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; margin: 10px 0; }
+  summary { cursor: pointer; padding: 12px 16px; font-weight: 600; }
+  summary small { font-weight: 400; color: var(--muted); margin-left: 8px; }
+  .scroll { overflow-x: auto; padding: 0 16px 14px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; margin: 10px 0; }
+  .card b { color: var(--accent); }
+  footer { margin-top: 56px; color: var(--muted); font-size: 13px; }
+  @media (max-width: 480px) { main { padding: 24px 16px 60px; } h1 { font-size: 23px; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Data audit: {{ audit.client }}</h1>
+  <p class="sub">{{ audit.tables | length }} tables from {{ files | length }} files,
+    {{ "{:,}".format(total_rows) }} rows &middot; data as of {{ audit.as_of.isoformat() }}</p>
+
+  <div class="tiles">
+    <div class="tile critical"><b>{{ audit.count("critical") }}</b><span>critical: fix before any analysis</span></div>
+    <div class="tile warning"><b>{{ audit.count("warning") }}</b><span>warnings: clean before reporting</span></div>
+    <div class="tile info"><b>{{ audit.count("info") }}</b><span>notes: worth knowing</span></div>
+    <div class="tile"><b>{{ audit.kpis | length }}</b><span>metrics the data can support</span></div>
+  </div>
+
+  <h2>What to fix first</h2>
+  {% for f in audit.findings %}
+  <div class="finding {{ f.severity }}">
+    <h3><span class="badge {{ f.severity }}">{{ f.severity }}</span>{{ f.title }}</h3>
+    <div class="where">{{ f.table }}{% if f.column %} &rsaquo; <code>{{ f.column }}</code>{% endif %}
+      &middot; {{ f.detail }}</div>
+    <p class="impact">{{ f.impact }}</p>
+    {% if f.examples %}<div class="examples">{% for e in f.examples %}<span>{{ e }}</span>{% endfor %}</div>{% endif %}
+  </div>
+  {% else %}
+  <p>No problems found.</p>
+  {% endfor %}
+
+  <h2>What this data can answer</h2>
+  {% for k in audit.kpis %}
+  <div class="card"><b>{{ k.name }}</b> <span class="where">({{ k.tables | join(", ") }})</span><br>{{ k.why }}</div>
+  {% else %}
+  <p class="sub">No standard metrics recognised; the shape of these files needs a conversation.</p>
+  {% endfor %}
+
+  <h2>How the files connect</h2>
+  {% if audit.joins %}
+  <div class="card scroll" style="padding-top:8px">
+    <table>
+      <tr><th>From</th><th>To</th><th>Matched</th><th>No match</th></tr>
+      {% for j in audit.joins %}
+      <tr><td>{{ j.left_table }} &rsaquo; <code>{{ j.left_column }}</code></td>
+        <td>{{ j.right_table }} &rsaquo; <code>{{ j.right_column }}</code></td>
+        <td>{{ "{:.0%}".format(j.containment) }}</td><td>{{ j.orphan_values }}</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% else %}
+  <p class="sub">No shared keys found between files.</p>
+  {% endif %}
+
+  <h2>Files</h2>
+  {% for t in audit.tables %}
+  <details>
+    <summary>{{ t.name }}<small>{{ "{:,}".format(t.rows) }} rows &middot; {{ t.columns | length }} columns &middot; {{ t.source }}</small></summary>
+    <div class="scroll">
+      <table>
+        <tr><th>Column</th><th>Looks like</th><th>Filled</th><th>Distinct</th><th>Range</th><th>Examples</th></tr>
+        {% for c in t.columns %}
+        <tr><td><code>{{ c.name }}</code></td><td>{{ c.kind }}</td>
+          <td>{{ "{:.0%}".format(c.non_empty / t.rows) if t.rows else "-" }}</td><td>{{ "{:,}".format(c.distinct) }}</td>
+          <td>{% if c.minimum %}{{ c.minimum }} &ndash; {{ c.maximum }}{% endif %}</td>
+          <td>{{ c.examples | join(", ") }}</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+  </details>
+  {% endfor %}
+
+  <footer>Generated by DataIntake. Findings describe the files as received; nothing was changed.</footer>
+</main>
+</body>
+</html>
