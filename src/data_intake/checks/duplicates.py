@@ -11,6 +11,7 @@ from data_intake.models import Finding, Severity
 
 NAME_LIKE = re.compile(r"(name|customer|client|company|contact)", re.IGNORECASE)
 SIMILARITY = 92
+DIGITS = re.compile(r"\d+")
 MAX_FUZZY_VALUES = 3000
 
 
@@ -109,6 +110,13 @@ def _email_case_variants(ctx: TableContext, name: str) -> list[Finding]:
     ]
 
 
+def _likely_same(left: str, right: str) -> bool:
+    """Nearly identical text that is not simply a different number ("Item 1" vs "Item 11")."""
+    if left.lower() == right.lower() or DIGITS.findall(left) != DIGITS.findall(right):
+        return False
+    return fuzz.token_sort_ratio(left, right) >= SIMILARITY
+
+
 def _similar_names(ctx: TableContext, name: str) -> list[Finding]:
     distinct = sorted({" ".join(v.split()) for v in ctx.values(name) if not is_blank(v) and v})
     if len(distinct) > MAX_FUZZY_VALUES:
@@ -122,10 +130,7 @@ def _similar_names(ctx: TableContext, name: str) -> list[Finding]:
     for block in blocks.values():
         for i, left in enumerate(block):
             for right in block[i + 1 :]:
-                if (
-                    left.lower() != right.lower()
-                    and fuzz.token_sort_ratio(left, right) >= SIMILARITY
-                ):
+                if _likely_same(left, right):
                     pairs.append(f"{left} / {right}")
     if not pairs:
         return []
