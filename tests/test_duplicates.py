@@ -34,3 +34,8 @@ def test_email_case_variants_and_similar_names() -> None:
     )
     found = [f for f in duplicates.check(ctx) if f.code == "near_duplicate_records"]
     assert {f.column for f in found} == {"customer_name", "email"}
+
+
+def test_names_that_differ_only_by_number_are_not_duplicates() -> None:
+    ctx = context(["product_name"], [["Item 1"], ["Item 11"], ["Item 2"]])
+    assert duplicates.check(ctx) == []
