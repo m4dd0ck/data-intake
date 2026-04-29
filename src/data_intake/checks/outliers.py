@@ -4,7 +4,7 @@ import re
 import statistics
 from datetime import date
 
-from data_intake.checks import TableContext, examples
+from data_intake.checks import TableContext, counted, examples
 from data_intake.kinds import parse_date, parse_number
 from data_intake.models import Finding, Severity
 
@@ -45,7 +45,8 @@ def _extremes(ctx: TableContext, name: str, numbers: list[float]) -> list[Findin
             table=ctx.table.name,
             column=name,
             title="Unusually large or small values",
-            detail=f"{len(outliers)} values sit far outside the typical range "
+            detail=counted(len(outliers), "value sits", "values sit")
+            + " far outside the typical range "
             f"({_fmt(q1)} to {_fmt(q3)} for the middle half).",
             impact="Could be real (a big order) or an entry error (an extra zero). Averages "
             "will be pulled toward them either way; worth confirming.",
@@ -66,7 +67,7 @@ def _negatives(ctx: TableContext, name: str, numbers: list[float]) -> list[Findi
             table=ctx.table.name,
             column=name,
             title="Negative values where amounts are expected",
-            detail=f"{len(negatives)} values are below zero.",
+            detail=counted(len(negatives), "value is", "values are") + " below zero.",
             impact="Often refunds or corrections. Totals are right only if that is intended; "
             "averages and counts of sales are not.",
             examples=examples(_fmt(n) for n in negatives),
@@ -86,7 +87,8 @@ def _odd_dates(ctx: TableContext, name: str, dates: list[date]) -> list[Finding]
                 table=ctx.table.name,
                 column=name,
                 title="Dates after the export date",
-                detail=f"{len(future)} dates are later than {ctx.as_of.isoformat()}.",
+                detail=counted(len(future), "date is", "dates are")
+                + f" later than {ctx.as_of.isoformat()}.",
                 impact="Usually typos in the year or scheduled items mixed in with actuals; "
                 "they land in the wrong period in any time series.",
                 examples=examples(d.isoformat() for d in future),
@@ -102,7 +104,8 @@ def _odd_dates(ctx: TableContext, name: str, dates: list[date]) -> list[Finding]
                 table=ctx.table.name,
                 column=name,
                 title="Dates too old to be real",
-                detail=f"{len(ancient)} dates are before {EARLIEST_PLAUSIBLE.year}.",
+                detail=counted(len(ancient), "date is", "dates are")
+                + f" before {EARLIEST_PLAUSIBLE.year}.",
                 impact="Often a default like 1900-01-01 standing in for 'unknown'.",
                 examples=examples(d.isoformat() for d in ancient),
                 affected_rows=len(ancient),

@@ -45,3 +45,8 @@ def examples(values: Iterable[object], limit: int = MAX_EXAMPLES) -> list[str]:
 
 def percent(part: int, whole: int) -> str:
     return f"{100 * part / whole:.0f}%" if whole else "0%"
+
+
+def counted(count: int, one: str, many: str) -> str:
+    """``1 row is`` / ``3 rows are``: the count with matching wording."""
+    return f"{count} {one if count == 1 else many}"

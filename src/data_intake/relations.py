@@ -4,7 +4,7 @@ from itertools import permutations
 
 from rapidfuzz import fuzz
 
-from data_intake.checks import TableContext, examples
+from data_intake.checks import TableContext, counted, examples
 from data_intake.kinds import ColumnAnalysis, is_blank
 from data_intake.models import Finding, JoinCandidate, Severity
 
@@ -74,7 +74,8 @@ def _orphans(
         table=left.table.name,
         column=column,
         title=f"Values with no match in {right.table.name}",
-        detail=f"{len(orphans)} {column} values do not exist in {right.table.name}.{right_column}.",
+        detail=counted(len(orphans), f"{column} value does", f"{column} values do")
+        + f" not exist in {right.table.name}.{right_column}.",
         impact="Rows with these values drop out of any report that joins the two files, "
         "usually because the reference list is out of date.",
         examples=examples(orphans),

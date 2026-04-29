@@ -5,7 +5,7 @@ from collections import defaultdict
 
 from rapidfuzz import fuzz
 
-from data_intake.checks import TableContext, examples
+from data_intake.checks import TableContext, counted, examples
 from data_intake.kinds import ID_NAME, is_blank
 from data_intake.models import Finding, Severity
 
@@ -34,7 +34,8 @@ def _duplicate_rows(ctx: TableContext) -> list[Finding]:
             severity=Severity.CRITICAL,
             table=ctx.table.name,
             title="Rows repeated exactly",
-            detail=f"{extra} rows are exact copies of another row.",
+            detail=counted(extra, "row is an exact copy", "rows are exact copies")
+            + " of another row.",
             impact="Every count and total from this file is overstated until copies are removed.",
             affected_rows=extra,
         )
@@ -65,8 +66,10 @@ def _duplicate_keys(ctx: TableContext) -> list[Finding]:
                     table=ctx.table.name,
                     column=name,
                     title="The same ID appears on different rows",
-                    detail=f"{len(conflicting)} {name} values appear on rows with different "
-                    "contents.",
+                    detail=counted(
+                        len(conflicting), f"{name} value appears", f"{name} values appear"
+                    )
+                    + " on rows with different contents.",
                     impact="These are not simple copies: one of each pair is probably an edit "
                     "or a mistake, and someone has to decide which row is right.",
                     examples=examples(conflicting),
@@ -102,7 +105,8 @@ def _email_case_variants(ctx: TableContext, name: str) -> list[Finding]:
             table=ctx.table.name,
             column=name,
             title="The same email address in different capitalisation",
-            detail=f"{len(variants)} addresses appear with different letter case.",
+            detail=counted(len(variants), "address appears", "addresses appear")
+            + " in different letter case.",
             impact="These are almost certainly the same person counted as separate customers.",
             examples=variants[:5],
             affected_rows=len(variants),
@@ -141,7 +145,10 @@ def _similar_names(ctx: TableContext, name: str) -> list[Finding]:
             table=ctx.table.name,
             column=name,
             title="Names that look like the same record",
-            detail=f"{len(pairs)} pairs of {name} values are nearly identical.",
+            detail=counted(len(pairs), "pair", "pairs")
+            + f" of {name} values "
+            + ("is" if len(pairs) == 1 else "are")
+            + " nearly identical.",
             impact="Likely typos or re-entered records; counts of unique customers or clients "
             "will be too high until they are merged.",
             examples=pairs[:5],
