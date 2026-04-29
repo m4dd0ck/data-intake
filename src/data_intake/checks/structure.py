@@ -1,6 +1,6 @@
 """Problems with the shape of a file: title rows, headers, empty columns."""
 
-from data_intake.checks import TableContext
+from data_intake.checks import TableContext, counted
 from data_intake.models import Finding, Severity
 
 
@@ -31,7 +31,8 @@ def check(ctx: TableContext) -> list[Finding]:
                 severity=Severity.WARNING,
                 table=table.name,
                 title="Blank, padded or repeated column names",
-                detail=f"{len(shown)} headers were renamed to make them usable.",
+                detail=counted(len(shown), "header was", "headers were")
+                + " renamed so every column has a usable name.",
                 impact="Repeated names usually mean two different fields share a label; "
                 "someone who knows the export should say which is which.",
                 examples=shown[:5],
@@ -45,7 +46,7 @@ def check(ctx: TableContext) -> list[Finding]:
                 severity=Severity.INFO,
                 table=table.name,
                 title="Columns with no data",
-                detail=f"{len(empty)} columns are completely empty.",
+                detail=counted(len(empty), "column is", "columns are") + " completely empty.",
                 impact="Safe to drop, unless the field was expected to be filled.",
                 examples=empty[:5],
             )

@@ -3,7 +3,7 @@
 import re
 from collections import defaultdict
 
-from data_intake.checks import TableContext, examples
+from data_intake.checks import TableContext, counted, examples
 from data_intake.kinds import DATE_KINDS, NUMBER_KINDS, is_blank, value_kind
 from data_intake.models import Finding, Severity
 
@@ -78,14 +78,15 @@ def _numbers_as_text(ctx: TableContext, name: str, values: list[str]) -> list[Fi
                 table=ctx.table.name,
                 column=name,
                 title="Numbers stored with currency symbols or separators",
-                detail=f"{len(formatted)} values include symbols or thousands separators.",
+                detail=counted(len(formatted), "value includes", "values include")
+                + " symbols or thousands separators.",
                 impact="Spreadsheets and databases read these as text, so they drop out of sums "
                 "and averages unless they are cleaned first.",
                 examples=examples(formatted),
                 affected_rows=len(formatted),
             )
         )
-    currencies = {_currency_of(v) for v in values} - {None}
+    currencies = {c for v in values if (c := _currency_of(v))}
     if len(currencies) > 1:
         findings.append(
             Finding(
@@ -94,10 +95,12 @@ def _numbers_as_text(ctx: TableContext, name: str, values: list[str]) -> list[Fi
                 table=ctx.table.name,
                 column=name,
                 title="More than one currency in the same column",
-                detail=f"Found {', '.join(sorted(c for c in currencies if c))}.",
+                detail=f"Found {', '.join(sorted(currencies))}.",
                 impact="Totals would add different currencies together. Each value needs "
                 "converting to one currency (with the rate and date used) before any sum.",
-                examples=examples(v for v in values if _currency_of(v)),
+                examples=[
+                    next(v for v in values if _currency_of(v) == c) for c in sorted(currencies)
+                ],
             )
         )
     return findings
@@ -122,7 +125,7 @@ def _non_numbers(ctx: TableContext, name: str, values: list[str]) -> list[Findin
             table=ctx.table.name,
             column=name,
             title="Text mixed into a number column",
-            detail=f"{len(stray)} values are not numbers.",
+            detail=counted(len(stray), "value is not a number.", "values are not numbers."),
             impact="These rows will fail or be skipped in any calculation on this column.",
             examples=examples(stray),
             affected_rows=len(stray),
@@ -141,7 +144,8 @@ def _excel_serials(ctx: TableContext, name: str, values: list[str]) -> list[Find
             table=ctx.table.name,
             column=name,
             title="Dates saved as Excel serial numbers",
-            detail=f"{len(serials)} values look like Excel day counts (e.g. 45412 = 2024-04-30).",
+            detail=counted(len(serials), "value looks", "values look")
+            + " like Excel day counts (e.g. 45412 = 2024-04-30).",
             impact="They sort correctly but read as numbers; they need converting before any "
             "date grouping or display.",
             examples=examples(serials),
@@ -165,7 +169,8 @@ def _inconsistent_labels(ctx: TableContext, name: str, values: list[str]) -> lis
             table=ctx.table.name,
             column=name,
             title="The same label is spelled several ways",
-            detail=f"{len(clashing)} labels differ only by case or spacing.",
+            detail=counted(len(clashing), "label differs", "labels differ")
+            + " only by case or spacing.",
             impact="Breakdowns will split one group into several (e.g. 'US' and 'us ' "
             "counted separately).",
             examples=shown[:5],
@@ -185,7 +190,7 @@ def _whitespace(ctx: TableContext, name: str, raw: list[str]) -> list[Finding]:
             table=ctx.table.name,
             column=name,
             title="Values with leading or trailing spaces",
-            detail=f"{len(padded)} values have extra spaces.",
+            detail=counted(len(padded), "value has", "values have") + " extra spaces.",
             impact="Invisible, but 'Leeds' and 'Leeds ' will not match in lookups or joins.",
             examples=examples(padded),
             affected_rows=len(padded),
