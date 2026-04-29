@@ -24,3 +24,7 @@ data/
 
 # Built demo site
 site/
+
+# Sample exports written by `intake demo`
+demo_exports/
+audit.html
