@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DataIntake - sample audits</title>
+<style>
+  :root { --bg: #fbfaf8; --panel: #fff; --text: #1d1d1f; --muted: #6b6b70; --line: #e6e3de;
+    --critical: #b42318; --warning: #9a6700; --accent: #2e5e4e; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #141415; --panel: #1c1c1e; --text: #ececed; --muted: #a0a0a6; --line: #2e2e31;
+      --critical: #ff8a80; --warning: #f5c451; --accent: #8fd1b5; }
+  }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 48px 20px 80px; }
+  h1 { font-size: 30px; margin: 0 0 8px; }
+  p.lead { color: var(--muted); margin: 0 0 32px; font-size: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; margin: 16px 0; }
+  .card h2 { font-size: 19px; margin: 0 0 4px; }
+  .muted { color: var(--muted); }
+  .counts { margin: 12px 0; display: flex; gap: 18px; flex-wrap: wrap; font-size: 14px; }
+  .counts b { font-size: 20px; margin-right: 4px; }
+  .critical b { color: var(--critical); } .warning b { color: var(--warning); }
+  a.button { display: inline-block; background: var(--accent); color: var(--bg); text-decoration: none;
+    padding: 8px 14px; border-radius: 8px; font-weight: 600; margin-right: 10px; }
+  .files { margin-top: 10px; font-size: 13px; }
+  .files a { color: var(--accent); margin-right: 10px; }
+  footer { margin-top: 48px; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>DataIntake</h1>
+  <p class="lead">A first-day audit of whatever data a client sends: what each file holds, what is wrong
+    with it in plain language, how the files connect, and which metrics it can support. Below are
+    audits of two sample businesses whose exports were made messy on purpose.</p>
+  {% for c in cards %}
+  <div class="card">
+    <h2>{{ c.name }}</h2>
+    <div class="muted">{{ c.blurb }}</div>
+    <div class="counts">
+      <span class="critical"><b>{{ c.audit.count("critical") }}</b>critical</span>
+      <span class="warning"><b>{{ c.audit.count("warning") }}</b>warnings</span>
+      <span><b>{{ c.audit.kpis | length }}</b>supported metrics</span>
+    </div>
+    <a class="button" href="{{ c.key }}/">Open the audit</a>
+    <div class="files muted">Raw exports:
+      {% for f in c.files %}<a href="exports/{{ c.key }}/{{ f }}">{{ f }}</a>{% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+  <footer>Sample data is synthetic. Source and method: github.com/m4dd0ck/data-intake</footer>
+</main>
+</body>
+</html>
