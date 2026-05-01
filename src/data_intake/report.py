@@ -31,3 +31,23 @@ def write_reports(audit: Audit, html_path: Path | None, json_path: Path | None) 
     if json_path:
         json_path.parent.mkdir(parents=True, exist_ok=True)
         json_path.write_text(audit.model_dump_json(indent=2) + "\n", encoding="utf-8")
+
+
+def without_examples(audit: Audit) -> Audit:
+    """Copy of the audit with every example value removed, for reports that leave the client."""
+    return audit.model_copy(
+        update={
+            "findings": [f.model_copy(update={"examples": []}) for f in audit.findings],
+            "tables": [
+                t.model_copy(
+                    update={
+                        "columns": [
+                            c.model_copy(update={"examples": [], "minimum": None, "maximum": None})
+                            for c in t.columns
+                        ]
+                    }
+                )
+                for t in audit.tables
+            ],
+        }
+    )

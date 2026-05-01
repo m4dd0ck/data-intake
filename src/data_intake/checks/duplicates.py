@@ -13,6 +13,7 @@ NAME_LIKE = re.compile(r"(name|customer|client|company|contact)", re.IGNORECASE)
 SIMILARITY = 92
 DIGITS = re.compile(r"\d+")
 MAX_FUZZY_VALUES = 3000
+MAX_NAME_LENGTH = 200
 
 
 def check(ctx: TableContext) -> list[Finding]:
@@ -122,7 +123,10 @@ def _likely_same(left: str, right: str) -> bool:
 
 
 def _similar_names(ctx: TableContext, name: str) -> list[Finding]:
-    distinct = sorted({" ".join(v.split()) for v in ctx.values(name) if not is_blank(v) and v})
+    # Reason: truncate long cells; names are short, and this bounds the cost of each comparison.
+    distinct = sorted(
+        {" ".join(v.split())[:MAX_NAME_LENGTH] for v in ctx.values(name) if not is_blank(v) and v}
+    )
     if len(distinct) > MAX_FUZZY_VALUES:
         return []
     # Reason: compare within first-letter blocks; near-duplicates rarely differ there, and it
