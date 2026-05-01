@@ -9,8 +9,9 @@ from rich.console import Console
 
 from data_intake.audit import run_audit
 from data_intake.demo import build_demo
+from data_intake.loaders import FileTooLargeError
 from data_intake.models import Severity
-from data_intake.report import write_reports
+from data_intake.report import without_examples, write_reports
 from data_intake.site import build_site
 
 app = typer.Typer(help="First-day audit of client data exports.", no_args_is_help=True)
@@ -26,13 +27,16 @@ def audit(
     as_of: Annotated[
         str | None, typer.Option(help="Export date (YYYY-MM-DD); later dates are flagged.")
     ] = None,
+    hide_examples: Annotated[
+        bool, typer.Option(help="Leave out example values (for reports shared beyond the client).")
+    ] = False,
 ) -> None:
     """Audit a folder of exports and write the report."""
     try:
         result = run_audit(folder, client, date.fromisoformat(as_of) if as_of else None)
-    except FileNotFoundError as error:
+    except (FileNotFoundError, FileTooLargeError) as error:
         raise typer.BadParameter(str(error)) from error
-    write_reports(result, out, json)
+    write_reports(without_examples(result) if hide_examples else result, out, json)
     console.print(
         f"[bold]{len(result.tables)}[/] tables, "
         f"[red]{result.count(Severity.CRITICAL)} critical[/], "

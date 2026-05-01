@@ -13,9 +13,27 @@ BUSINESSES = {
 }
 
 
+SITE_MARKER = ".intake-site"
+
+
+class UnsafeOutputError(ValueError):
+    """Raised instead of deleting a folder this tool did not create."""
+
+
+def _clear_previous_site(out_dir: Path) -> None:
+    """Delete an earlier build, but never a folder that is not one."""
+    if not out_dir.exists():
+        return
+    if any(out_dir.iterdir()) and not (out_dir / SITE_MARKER).exists():
+        raise UnsafeOutputError(
+            f"{out_dir} is not empty and was not built by intake site; choose another --out"
+        )
+    shutil.rmtree(out_dir)
+
+
 def build_site(out_dir: Path) -> Path:
     """Generate the demo exports, audit them, and write an index page. Returns index path."""
-    shutil.rmtree(out_dir, ignore_errors=True)
+    _clear_previous_site(out_dir)
     folders = build_demo(out_dir / "exports")
     cards = []
     for key, folder in folders.items():
@@ -31,6 +49,7 @@ def build_site(out_dir: Path) -> Path:
                 "files": sorted(p.name for p in folder.iterdir()),
             }
         )
+    (out_dir / SITE_MARKER).write_text("Built by intake site; safe to delete.\n")
     index = out_dir / "index.html"
     index.write_text(_env.get_template("site_index.html.j2").render(cards=cards), encoding="utf-8")
     return index

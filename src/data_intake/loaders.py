@@ -4,6 +4,8 @@ Everything is loaded as text on purpose: the audit's job is to find out what typ
 really has, so no reader is allowed to guess and silently coerce first.
 """
 
+import shutil
+import tempfile
 from collections.abc import Iterable
 from datetime import date, datetime, time
 from pathlib import Path
@@ -15,10 +17,19 @@ from data_intake.models import RawTable
 
 SUPPORTED = {".csv", ".txt", ".xlsx", ".xlsm"}
 HEADER_SCAN_ROWS = 20
+# Limits for hostile or accidental giant files; well above any real small-business export.
+MAX_FILE_BYTES = 200 * 1024 * 1024
+MAX_ROWS = 1_000_000
+MAX_COLUMNS = 500
+GLOB_CHARS = set("*?[]{}")
 
 
 class UnsupportedFileError(ValueError):
     """Raised for a file type the audit cannot read."""
+
+
+class FileTooLargeError(ValueError):
+    """Raised when a file exceeds the size, row or column limits."""
 
 
 def load_folder(folder: Path) -> list[RawTable]:
@@ -29,7 +40,13 @@ def load_folder(folder: Path) -> list[RawTable]:
     """
     if not folder.is_dir():
         raise FileNotFoundError(f"Not a folder: {folder}")
-    files = sorted(p for p in folder.iterdir() if p.suffix.lower() in SUPPORTED)
+    # Reason: skip symlinks so a link inside an unzipped client archive cannot pull a local
+    # file (say ~/.ssh/config) into a report that gets sent back.
+    files = sorted(
+        p
+        for p in folder.iterdir()
+        if p.suffix.lower() in SUPPORTED and p.is_file() and not p.is_symlink()
+    )
     if not files:
         raise FileNotFoundError(f"No CSV or Excel files in {folder}")
     tables: list[RawTable] = []
@@ -40,6 +57,8 @@ def load_folder(folder: Path) -> list[RawTable]:
 
 def load_file(path: Path) -> list[RawTable]:
     """One table per CSV, one per non-empty Excel sheet."""
+    if path.stat().st_size > MAX_FILE_BYTES:
+        raise FileTooLargeError(f"{path.name} is over {MAX_FILE_BYTES // 2**20} MB")
     suffix = path.suffix.lower()
     if suffix in {".csv", ".txt"}:
         return [_build_table(path.stem, path, _read_csv(path))]
@@ -49,13 +68,22 @@ def load_file(path: Path) -> list[RawTable]:
 
 
 def _read_csv(path: Path) -> list[list[str | None]]:
+    # DuckDB treats the path as a glob, so a file literally named "Sales [2024].csv" is read
+    # through a copy with a plain name.
+    if GLOB_CHARS & set(path.name):
+        with tempfile.TemporaryDirectory() as tmp:
+            plain = Path(tmp) / "export.csv"
+            shutil.copyfile(path, plain)
+            return _read_csv(plain)
     # Reason: header=false so title rows and odd headers reach our own header detection.
     with duckdb.connect() as connection:
         relation = connection.execute(
             "select * from read_csv(?, all_varchar = true, header = false, sample_size = -1)",
             [str(path)],
         )
-        return [list(row) for row in relation.fetchall()]
+        rows = [list(row) for row in relation.fetchmany(MAX_ROWS + 1)]
+    _check_shape(path, len(rows), max((len(r) for r in rows), default=0))
+    return rows
 
 
 def _read_workbook(path: Path) -> list[RawTable]:
@@ -63,13 +91,28 @@ def _read_workbook(path: Path) -> list[RawTable]:
     tables = []
     try:
         for sheet in workbook.worksheets:
-            rows = [[_cell_text(v) for v in row] for row in sheet.iter_rows(values_only=True)]
+            # Reason: read-only mode trusts the sheet's declared size and pads to it; a sheet
+            # claiming A1:XFD1048576 would build billions of empty cells.
+            sheet.reset_dimensions()
+            rows = []
+            for row in sheet.iter_rows(values_only=True):
+                rows.append([_cell_text(v) for v in row[: MAX_COLUMNS + 1]])
+                if len(rows) > MAX_ROWS:
+                    break
+            _check_shape(path, len(rows), max((len(r) for r in rows), default=0))
             if any(any(cell is not None for cell in row) for row in rows):
                 name = path.stem if len(workbook.worksheets) == 1 else f"{path.stem}/{sheet.title}"
                 tables.append(_build_table(name, path, rows))
     finally:
         workbook.close()
     return tables
+
+
+def _check_shape(path: Path, rows: int, columns: int) -> None:
+    if rows > MAX_ROWS or columns > MAX_COLUMNS:
+        raise FileTooLargeError(
+            f"{path.name} exceeds {MAX_ROWS:,} rows or {MAX_COLUMNS} columns; split it first"
+        )
 
 
 def _cell_text(value: object) -> str | None:
