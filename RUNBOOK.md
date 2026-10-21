@@ -35,8 +35,6 @@ client's files, point `audit` at their folder with `--client` and `--as-of`; add
 
 ## Release
 
-Follows `~/developer/hq/CONVENTIONS.md` §Versioning.
-
 1. Bump `version` in `pyproject.toml` and `__version__` in `src/data_intake/__init__.py`,
    then `uv lock` (CI installs with `--locked`).
 2. Commit `chore: Release vX.Y.Z`, tag `git tag -a vX.Y.Z`, push `main` and the tag.
@@ -58,5 +56,4 @@ and deploys the site to GitHub Pages. `gh run list --limit 3` shows whether it l
 uv run ruff check . && uv run ruff format --check . && uv run mypy src/
 uv run pytest
 uv run intake site
-python3 ~/.claude/scripts/doc-check.py --repo .
 ```

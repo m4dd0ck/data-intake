@@ -33,21 +33,17 @@ Needs Python 3.12+ and [uv](https://github.com/astral-sh/uv).
 
 ```bash
 uv sync
-uv run intake audit ./exports --client "Acme Ltd" --out acme-audit.html --json acme.json
+uv run intake demo            # writes demo_exports/shop and demo_exports/studio
+uv run intake audit demo_exports/shop --client "Pinecrest Goods" --as-of 2024-12-31 --out pinecrest-audit.html --json pinecrest.json
 ```
 
 ```
 3 tables, 3 critical, 12 warnings, 3 notes
-Report: acme-audit.html  Findings: acme.json
+Report: pinecrest-audit.html  Findings: pinecrest.json
 ```
 
-Try it on the sample exports:
-
-```bash
-uv run intake demo            # writes demo_exports/shop and demo_exports/studio
-uv run intake audit demo_exports/shop --client "Pinecrest Goods" --as-of 2024-12-31
-uv run intake site            # the Pages site, locally, in site/
-```
+On your own exports: `uv run intake audit ./exports --client "Acme Ltd" --out acme-audit.html --json acme.json`.
+`uv run intake site` builds the Pages site locally, in `site/`.
 
 ## Commands
 
@@ -151,4 +147,3 @@ CI runs the same checks, builds the site from synthetic data and deploys it to P
 - `RUNBOOK.md`: run, release, deploy, restore.
 - `CLAUDE.md`: the agent rules.
 - `TASK.md`: what is open.
-- `~/developer/hq/CONVENTIONS.md`: the portfolio release and commit rules.
