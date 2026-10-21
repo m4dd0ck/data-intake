@@ -94,8 +94,7 @@ add different currencies together."*
   the text a person sees, so the audit, not the reader, decides what each column holds.
 - **The demo is an answer key.** `demo.py` lists every problem planted in the sample exports
   (`PLANTED`) and columns that are clean (`CLEAN_COLUMNS`). The tests fail if any planted problem
-  is missed or a clean column is flagged. Current score: 20/20 found, 0 false alarms on the
-  clean columns.
+  is missed or a clean column is flagged.
 - **Safe to send.** The report is one HTML file with inline styles, no scripts and no external
   assets, and every value from the data is escaped.
 - **Safe to run on files you did not make.** Symlinks are skipped, sheets that declare absurd
