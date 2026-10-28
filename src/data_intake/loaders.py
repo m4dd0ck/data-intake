@@ -56,7 +56,13 @@ def load_folder(folder: Path) -> list[RawTable]:
 
 
 def load_file(path: Path) -> list[RawTable]:
-    """One table per CSV, one per non-empty Excel sheet."""
+    """One table per CSV, one per non-empty Excel sheet.
+
+    Raises:
+        FileTooLargeError: If the file is over the size limit.
+        UnsupportedFileError: If the suffix is not a CSV, text or Excel type. ``load_folder``
+            filters by suffix first, so only direct callers meet it.
+    """
     if path.stat().st_size > MAX_FILE_BYTES:
         raise FileTooLargeError(f"{path.name} is over {MAX_FILE_BYTES // 2**20} MB")
     suffix = path.suffix.lower()

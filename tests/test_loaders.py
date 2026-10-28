@@ -3,7 +3,13 @@ from pathlib import Path
 import pytest
 from openpyxl import Workbook
 
-from data_intake.loaders import clean_headers, find_header_row, load_folder
+from data_intake.loaders import (
+    UnsupportedFileError,
+    clean_headers,
+    find_header_row,
+    load_file,
+    load_folder,
+)
 
 
 def test_title_rows_above_the_header_are_skipped(tmp_path: Path) -> None:
@@ -50,3 +56,10 @@ def test_header_defaults_to_first_row_when_every_row_is_full() -> None:
 def test_empty_folder_raises(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError, match="No CSV or Excel"):
         load_folder(tmp_path)
+
+
+def test_load_file_refuses_an_unsupported_type(tmp_path: Path) -> None:
+    path = tmp_path / "orders.json"
+    path.write_text("[]")
+    with pytest.raises(UnsupportedFileError, match="orders.json"):
+        load_file(path)
