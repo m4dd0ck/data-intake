@@ -8,6 +8,10 @@ openpyxl, rapidfuzz, Jinja, Typer.
 **Sample audits: [m4dd0ck.github.io/data-intake](https://m4dd0ck.github.io/data-intake/)**
 (two small businesses with deliberately messy exports; the raw files are linked next to each audit)
 
+**On your own files, in the browser: [m4dd0ck.github.io/intake-web](https://m4dd0ck.github.io/intake-web/)**
+(the same audit ported to TypeScript and DuckDB-Wasm, with the same findings on the samples; files
+are read in the browser and never uploaded; source in [intake-web](https://github.com/m4dd0ck/intake-web))
+
 ![Audit of the sample store](assets/audit.png)
 
 This file is the reference: what exists and how it works. `RUNBOOK.md` is the procedures,
